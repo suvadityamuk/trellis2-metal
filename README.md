@@ -14,28 +14,38 @@ Apple-silicon GPUs with no Python at runtime. Two builds from one binary:
 
 `512`:
 
-| Image | tokens | Official PyTorch-MPS | Metal parity | Metal fast |
-|---|---|---|---|---|
-| 0a34 | 2867 | 51.3 | 37.3 | **26.8** |
-| 0e49 | 5425 | 84.3 | 58.1 | **43.3** |
-| 0f16 | 3819 | 59.8 | 44.5 | **33.0** |
-| 130c | 1848 | 36.0 | 30.1 | **21.1** |
-| T.png | 3530 | 58.0 | 42.6 | **30.9** |
-| **Sum** | | 289.4 | 212.5 (1.36×) | **155.1 (1.87×)** |
+| Image | tokens | Official PyTorch-MPS | Official `torch.compile` | Metal parity | Metal fast |
+|---|---|---|---|---|---|
+| 0a34 | 2867 | 51.3 | 47.6 | 37.3 | **26.8** |
+| 0e49 | 5425 | 84.3 | 78.6 | 58.1 | **43.3** |
+| 0f16 | 3819 | 59.8 | 56.8 | 44.5 | **33.0** |
+| 130c | 1848 | 36.0 | 34.2 | 30.1 | **21.1** |
+| T.png | 3530 | 58.0 | 54.8 | 42.6 | **30.9** |
+| **Sum** | | 289.4 | 271.9 (1.06×) | 212.5 (1.36×) | **155.1 (1.87×)** |
 
 `1024_cascade`:
 
-| Image | tokens | Official PyTorch-MPS | Metal parity | Metal fast |
-|---|---|---|---|---|
-| 0a34 | 13360 | 226.5 | 176.2 | **140.8** |
-| 0e49 | 27054 | 562.8 | 448.0 | **377.5** |
-| 0f16 | 17482 | 321.4 | 248.3 | **209.0** |
-| 130c | 7011 | 111.6 | 89.1 | **65.5** |
-| T.png | 16362 | 295.4 | 226.9 | **183.2** |
-| **Sum** | | 1517.7 | 1188.5 (1.28×) | **976.1 (1.55×)** |
+| Image | tokens | Official PyTorch-MPS | Official `torch.compile` | Metal parity | Metal fast |
+|---|---|---|---|---|---|
+| 0a34 | 13360 | 226.5 | 235.1 | 176.2 | **140.8** |
+| 0e49 | 27054 | 562.8 | 596.9 | 448.0 | **377.5** |
+| 0f16 | 17482 | 321.4 | 348.6 | 248.3 | **209.0** |
+| 130c | 7011 | 111.6 | 119.0 | 89.1 | **65.5** |
+| T.png | 16362 | 295.4 | 311.4 | 226.9 | **183.2** |
+| **Sum** | | 1517.7 | 1611.0 (0.94×) | 1188.5 (1.28×) | **976.1 (1.55×)** |
 
 The fast column predates the Metal 4 GEMM described under *Metal-specific experiments*, which makes the fast build a
 further 4.4% (`512`) and 3.4% (`1024_cascade`) faster in a same-session A/B.
+
+The `torch.compile` column is the official pipeline with the flow transformers and the DINOv3 encoder wrapped in
+`torch.compile(dynamic=True)` (`tools/bench_ref.py --compile`, the same wrapping as the CUDA port's baseline), with
+compilation absorbed by the warmup run (117 s at `512`, 298 s at `1024_cascade`, against 51 s and 227 s eager). It is
+6% faster than eager at `512`, almost all of it in the dense sparse-structure sampler (87.9 → 75.2 s), and 6% slower
+at `1024_cascade` (shape SLat 747 → 808 s, texture SLat 371 → 414 s). The sparse samplers gain nothing because their
+time is in the bf16 matmul and attention kernels, which compilation does not change, and the upstream sparse attention
+code breaks the graph on every call (a function-local `import`). It was measured in a later session than the other
+columns, so differences of a few percent may be session-to-session drift. Its meshes are not bit-identical to the
+eager ones (vertex counts differ by a few percent, up to 26% on one image); their distance to eager was not measured.
 
 Times are the whole pipeline (preprocess, DINOv3, three samplers, two decoders, mesh extraction), with model loading
 excluded. Raw numbers are in `bench/*.json`. All ten parity meshes are bit-identical to the official ones.
@@ -226,6 +236,7 @@ roughness, alpha) of the official `MeshWithVoxel`. Other options: `--seed N` (de
 ./build/t2 --image a.png --image b.png --warmup 1 --bench out.json --out dir   # timing as in tools/bench_ref.py
 ./build/t2 --image T.png --type 512 --ref refdump/T_512.safetensors            # prints PARITY OK / FAILED
 tools/run_bench.sh 512 1024_cascade                                            # official vs parity vs fast, sequential
+ref/venv/bin/python tools/bench_ref.py --compile --type 512 --images a.png --out out.json   # official under torch.compile
 tools/ab_bench.sh 512 1024_cascade                                             # fast build: MPS matmul vs Metal 4 GEMM
 ```
 

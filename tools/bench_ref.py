@@ -1,5 +1,6 @@
 """Official TRELLIS.2 pipeline timing on PyTorch-MPS (image -> MeshWithVoxel), warm process, per-stage breakdown.
-  ref/venv/bin/python tools/bench_ref.py --type 512 --images a.png b.webp ... --out bench/official_512.json [--save DIR]
+  ref/venv/bin/python tools/bench_ref.py --type 512 --images a.png b.webp ... --out bench/official_512.json [--save DIR] [--compile]
+--compile wraps the flow transformers and the DINOv3 encoder in torch.compile(dynamic=True), as in the CUDA port's baseline.
 Model loading is excluded; one warmup run of the first image precedes the timed runs."""
 import argparse, os, sys, time, json, resource
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -11,9 +12,15 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--type", default="512"); ap.add_argument("--images", nargs="+", required=True)
 ap.add_argument("--out", required=True); ap.add_argument("--warmup", type=int, default=1)
 ap.add_argument("--seed", type=int, default=42); ap.add_argument("--save", default="")
+ap.add_argument("--compile", action="store_true")
 a = ap.parse_args()
 
 pipe = mps_ref.load_pipeline()
+if a.compile:
+    torch._dynamo.config.cache_size_limit = 256
+    for k, m in pipe.models.items():
+        if "flow" in k: m.forward = torch.compile(m.forward, dynamic=True)
+    pipe.image_cond_model.model.forward = torch.compile(pipe.image_cond_model.model.forward, dynamic=True)
 T = {}
 def now(): mps_ref.sync(); return time.perf_counter()
 def timed(name, key):
