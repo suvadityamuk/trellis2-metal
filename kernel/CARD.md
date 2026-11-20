@@ -60,13 +60,17 @@ A benchmarking script is available for this kernel. Run `kernels benchmark {{ re
 {% endif %}
 
 Measured on an Apple M5 Pro (macOS 26, PyTorch 2.15) with 16384 tokens and 1536 channels, against the same computation
-written with PyTorch MPS ops (best of 15, same session):
+written with PyTorch MPS ops, run eagerly and through `torch.compile` (default mode; `max-autotune` gave the same
+times). Best of 15 calls after warm-up, all three measured in the same session, compilation time excluded:
 
-| Workload | This kernel | PyTorch MPS |
-|---|---|---|
-| `gemm`, 1536 → 4608 | 7.3 ms | 7.7 ms |
-| `gemm_bias_gelu`, 1536 → 6144 | 10.3 ms | 25.3 ms |
-| `resid_ln` (layer norm only) | 0.9 ms | 2.2 ms |
+| Workload | This kernel | PyTorch MPS, eager | PyTorch MPS, `torch.compile` |
+|---|---|---|---|
+| `gemm`, 1536 → 4608 | 7.3 ms | 7.6 ms | 7.6 ms |
+| `gemm_bias_gelu`, 1536 → 6144 | 10.4 ms | 25.1 ms | 11.8 ms |
+| `resid_ln` (layer norm only) | 0.87 ms | 2.20 ms | 0.94 ms |
+
+`torch.compile` fuses the elementwise work after the matrix product into one generated Metal shader, which closes most
+of the gap to eager mode: against compiled PyTorch these kernels are 4% to 14% faster rather than 2.4x.
 {% if source %}
 
 ## Source
