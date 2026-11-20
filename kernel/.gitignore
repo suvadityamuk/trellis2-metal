@@ -1,0 +1,6 @@
+build/
+build-dev/
+result
+.direnv/
+__pycache__/
+.pytest_cache/

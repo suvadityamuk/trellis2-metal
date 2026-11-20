@@ -242,6 +242,34 @@ kernel library out of `libtorch_cpu.dylib`, and `tools/ref_dump.py` writes the s
   chip family may need the reference dumps regenerated before `PARITY OK` means anything there.
 - Never time two GPU jobs at once on a unified-memory machine.
 
+## Hugging Face kernels (`kernel/`)
+
+`kernel/` packages the fast path's standalone Metal kernels for the [`kernels`](https://github.com/huggingface/kernels)
+library, as a PyTorch extension that works on MPS tensors: `gemm`, `gemm_bias_gelu` (the Metal 4 MPP GEMM with fused
+bias+GELU), `bias_gelu_`, `resid_ln` (residual update + layer norm) and `qprep` (q/k/v split with QK-norm and RoPE).
+Hub repository: `suvadityamuk/trellis2-metal` (version 0).
+
+```python
+from kernels import get_kernel
+t2 = get_kernel("suvadityamuk/trellis2-metal", version=0, trust_remote_code=True)
+y = t2.gemm_bias_gelu(x, weight, bias)   # x [M,K] bf16, weight [N,K] bf16, bias [N] f32, all on MPS
+```
+
+Building and publishing needs Nix, `kernel-builder`, Xcode 26 and the Metal Toolchain
+(see the [builder docs](https://github.com/huggingface/kernels/blob/main/docs/source/builder/metal.md)):
+
+```sh
+cd kernel
+kernel-builder check-config
+kernel-builder build-and-copy -L         # -> kernel/build/<variant>/
+pytest tests                             # with LOCAL_KERNELS="suvadityamuk/trellis2-metal=$PWD"
+kernel-builder build-and-upload          # publishes to the Hub
+```
+
+For quick iteration without that toolchain, `PYTHON=../ref/venv/bin/python dev/build_dev.sh ../build/kernel-dev`
+builds a development-only extension (shaders compiled at runtime; never publish it), tested with
+`T2_KERNEL_DEV_PATH=$PWD/../build/kernel-dev python -m pytest tests`.
+
 ## Layout
 
 - `src/torchk/`: replay of torch-MPS kernel dispatches (elementwise, reductions, matmul, attention, conv, norms).

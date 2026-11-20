@@ -1,0 +1,24 @@
+[general]
+name = "trellis2-metal"
+version = 0
+edition = 6
+license = "Apache-2.0"
+backends = ["metal"]
+source = "https://github.com/suvadityamuk/trellis2-metal"
+
+[general.hub]
+repo-id = "suvadityamuk/trellis2-metal"
+
+[torch]
+src = [
+    "torch-ext/torch_binding.cpp",
+    "torch-ext/torch_binding.h",
+]
+
+[kernel.trellis2_metal]
+language = "cpp-metal"
+depends = ["torch"]
+src = [
+    "trellis2_metal/ops.mm",
+    "trellis2_metal/kernels.metal",
+]
