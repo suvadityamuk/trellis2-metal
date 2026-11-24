@@ -432,10 +432,9 @@ library, as a PyTorch extension that works on MPS tensors: `gemm`, `gemm_bias_ge
 bias+GELU), `bias_gelu_`, `resid_ln` (residual update + layer norm) and `qprep` (q/k/v split with QK-norm and RoPE).
 Hub repository: `suvadityamuk/trellis2-metal` (version 0).
 
-Not yet published (in the source tree only, built and tested with the development build below, not with
-`kernel-builder`): two kernels from `to_glb`, `lbvh_build` / `mesh_nearest` / `mesh_udf` (nearest triangle, distance and
-barycentrics on a linear BVH, tested against a float64 brute force) and `telea_inpaint` (wavefront Telea inpainting of
-uint8 images, tested against a NumPy implementation of the same fill order and, loosely, against OpenCV).
+The same package carries two kernels from `to_glb`: `lbvh_build` / `mesh_nearest` / `mesh_udf` (nearest triangle,
+distance and barycentrics on a linear BVH, tested against a float64 brute force) and `telea_inpaint` (wavefront Telea
+inpainting of uint8 images, tested against a NumPy implementation of the same fill order and, loosely, against OpenCV).
 
 ```python
 from kernels import get_kernel
