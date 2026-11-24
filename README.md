@@ -1,7 +1,8 @@
 # TRELLIS.2 on Metal
 
 Image → 3D mesh with per-vertex PBR attributes for [TRELLIS.2-4B](https://github.com/microsoft/TRELLIS.2)
-(`Trellis2ImageTo3DPipeline.run`, pipeline types `512` and `1024_cascade`), as a native Objective-C++/Metal program for
+(`Trellis2ImageTo3DPipeline.run`, pipeline types `512` and `1024_cascade`), and on to a textured GLB
+(`o_voxel.postprocess.to_glb`, see *Image → GLB*), as a native Objective-C++/Metal program for
 Apple-silicon GPUs with no Python at runtime. Two builds from one binary:
 
 - **parity** (`--mode parity`, default): bitwise identical to the official PyTorch-MPS pipeline, from the input image to
@@ -85,6 +86,164 @@ Rendered with `build/render` (a small Metal rasterizer: vertex base color with s
 Turntable of the Metal fast output for `T.png`:
 
 ![turntable](docs/T_fast.gif)
+
+## Image → GLB (`--glb`)
+
+`build/t2 --glb out.glb` continues from the mesh to a textured GLB, reimplementing `o_voxel.postprocess.to_glb` with
+the settings of the official `example.py` (`decimation_target=1000000`, `texture_size=4096`, `remesh=True`,
+`remesh_band=1`, `remesh_project=0`; `--faces` and `--texture-size` change the first two). It runs after either build's
+mesh and never touches the parity path. There is no bitwise reference for this stage (the official one needs CUDA-only
+`cumesh`/`nvdiffrast`, so there is **no official `to_glb` baseline on a Mac**); it is gated by tolerance and unit tests.
+
+| Stage | How | Where |
+|---|---|---|
+| fill holes | boundary loops under the official perimeter threshold, fan-filled | CPU |
+| remesh | LBVH over the input triangles (63-bit Morton codes, Karras tree; built on CPU threads in shared buffers), unsigned distance to it for the grid vertices of a one-voxel band (the cost of the remesh), dual contouring of the band | Metal compute for the queries, CPU threads for the rest |
+| simplify | parallel quadric edge collapse on CuMesh's schedule: plane-distance quadrics, repeated independent-set selection per pricing pass, last pass lands on the face target | CPU, all performance cores |
+| UV unwrap | chart clustering after CuMesh's `compute_charts`, charts split into 64 groups, one xatlas instance per group in parallel, group atlases tiled into one | CPU, all performance cores |
+| bake | UV-space rasterization, then one fused kernel per texel: nearest point on the *input* mesh (LBVH) → trilinear sample of the sparse voxel attributes | Metal render + compute |
+| inpaint | wavefront TELEA: 4-connected distance levels, one dispatch per level; base colour, alpha, metallic, roughness together | Metal compute |
+| pack | uint8 conversion, RGBA base colour and (0, roughness, metallic) | Metal compute |
+| export | direct binary glTF writer; WebP (`EXT_texture_webp`, quality 80, method 0, as trimesh writes) or PNG (`--texture-format png`), the two textures encoded on separate threads | CPU |
+
+Remesh, simplification and chart clustering follow the CuMesh algorithms (MIT) that the official `to_glb` calls;
+the differences in the simplifier (direct plane-distance quadric, several independent sets per pricing pass, landing
+on the face target) are listed at the top of `src/glb/simplify.h`. MSL is compiled at runtime with fast math off and `fp contract(off)`. Vendored, unmodified, under `third_party/`:
+[xatlas](https://github.com/jpcy/xatlas) (MIT) and the encoder subset of libwebp 1.5.0 with sharpyuv (BSD-3-Clause,
+with `COPYING`, `PATENTS`, `AUTHORS`). Still no CMake and no other dependency.
+
+### Timing (same protocol as above; seconds)
+
+Three configurations, each run twice: old fast (the binary before this change, image → mesh), new fast without `--glb`
+(image → mesh), and new fast with `--glb` (image → GLB). The runs were strictly sequential with nothing else running on
+the machine and a 5-minute idle cooldown before each, in the order old, new, glb, glb, new, old; macOS reported no
+thermal warning before or after any run. Per-image values are the mean of the two runs. Official PyTorch-MPS numbers
+are from the earlier session of the table at the top. Raw numbers: `bench/e2e_cool/`.
+
+`512`:
+
+| Image | Official PyTorch-MPS image→mesh | Old fast image→mesh | New fast image→mesh (no `--glb`) | New fast image→mesh (with `--glb`) | `to_glb` | export | New image→GLB | faces | GLB MB |
+|---|---|---|---|---|---|---|---|---|---|
+| 0a34 | 51.3 | 24.1 | 24.3 | 24.6 | 3.17 | 0.48 | 28.3 | 999,452 | 44.0 |
+| 0e49 | 84.3 | 40.7 | 41.0 | 41.3 | 3.85 | 0.64 | 45.8 | 997,456 | 47.4 |
+| 0f16 | 59.8 | 31.0 | 31.2 | 31.2 | 3.06 | 0.43 | 34.7 | 999,934 | 37.4 |
+| 130c | 36.0 | 19.8 | 19.9 | 19.9 | 3.01 | 0.34 | 23.3 | 999,844 | 39.9 |
+| T.png | 58.0 | 29.0 | 29.1 | 29.2 | 3.33 | 0.60 | 33.1 | 999,678 | 40.8 |
+| **Sum** | 289.4 | 144.6 | 145.5 | 146.2 | 16.4 | 2.5 | **165.1** | | |
+
+Image→mesh sums of the two runs: old 143.6 / 145.5, new without `--glb` 145.4 / 145.5, new with `--glb` 145.5 / 146.9; image→GLB 164.3 / 165.9.
+
+`1024_cascade`:
+
+| Image | Official PyTorch-MPS image→mesh | Old fast image→mesh | New fast image→mesh (no `--glb`) | New fast image→mesh (with `--glb`) | `to_glb` | export | New image→GLB | faces | GLB MB |
+|---|---|---|---|---|---|---|---|---|---|
+| 0a34 | 226.5 | 137.4 | 138.5 | 142.1 | 7.55 | 0.69 | 150.3 | 996,270 | 46.7 |
+| 0e49 | 562.8 | 393.8 | 411.9 | 422.1 | 13.12 | 0.74 | 436.0 | 993,496 | 51.6 |
+| 0f16 | 321.4 | 212.9 | 229.6 | 226.1 | 7.53 | 0.65 | 234.3 | 999,416 | 41.1 |
+| 130c | 111.6 | 67.8 | 71.4 | 69.8 | 4.29 | 0.59 | 74.7 | 999,858 | 46.7 |
+| T.png | 295.4 | 189.5 | 204.1 | 200.4 | 7.67 | 0.72 | 208.8 | 998,510 | 43.9 |
+| **Sum** | 1517.7 | 1001.3 | 1055.6 | 1060.6 | 40.2 | 3.4 | **1104.1** | | |
+
+Image→mesh sums of the two runs: old 1030.6 / 972.0, new without `--glb` 1057.9 / 1053.3, new with `--glb` 1060.5 / 1060.7; image→GLB 1104.0 / 1104.2.
+
+`to_glb` here excludes export. Per stage, sum of five images:
+
+| | remesh | simplify | UV unwrap | bake | inpaint + pack | export | peak footprint old → new |
+|---|---|---|---|---|---|---|---|
+| `512` | 0.87 | 4.69 | 9.85 | 0.44 | 0.58 | 2.50 | 19.26 → 19.45 GB |
+| `1024_cascade` | 3.62 | 25.98 | 9.16 | 0.71 | 0.69 | 3.39 | 42.64 → 43.05 GB |
+
+Reading the image→mesh columns: the model source is identical in the old and new binaries, and running `to_glb`
+between images does not slow the samplers (with and without `--glb` are within 1% at both sizes). At `512` all six
+runs are within 143.6–146.9 s. At `1024_cascade` the old binary's two five-image runs (1030.6 and 972.0 s) differ from
+each other by 6% and are both below the four new-binary runs (1053–1061 s). A single-image A/B at `1024_cascade`
+(0f16, three interleaved runs each, same cooldown protocol) shows no difference: old 210.4 / 216.7 / 210.4 s, new
+212.7 / 212.1 / 217.6 s, new rebuilt from clean 214.7 / 214.6 / 208.8 s. The gap in the five-image sums is therefore
+unexplained and may be run-to-run variance of long runs; it was not resolved. An earlier, uncooled session with other
+applications open was 10–15% slower throughout (`bench/e2e/`).
+
+For context only, on **different hardware**: the other ports report for the official `to_glb` 608.6 s (ROCm) and
+363.5 s (CUDA), and for their fast `to_glb` 14.0 s (ROCm) and 15.2 s (CUDA), each a sum over the same five images.
+
+### A/B on this Mac (`build/glb`, `T.png` `1024_cascade` mesh, 12.7 M input faces)
+
+| Variant | Result |
+|---|---|
+| default, best of 3 | 7.17 s: remesh 0.47, simplify 3.93, UV unwrap 1.88, bake 0.11, inpaint + pack 0.12, export 0.67 |
+| naive CPU on this Mac: one serial xatlas over the whole mesh | UV unwrap 9.73 s (5.2× slower), total 15.18 s |
+| naive CPU on this Mac: `cv2.inpaint` TELEA on the four 4096² maps | 7.96 s, against about 0.1 s for the Metal wavefront |
+| PNG textures | export 0.54 s, 82.6 MB instead of 43.9 MB |
+| WebP method 4 (dropped) | export 4.07 s for 42.7 MB: 6× the time for 3% of the size |
+| WebP alpha quality 0 (option, not default) | export 0.30 s, 40.9 MB; lossy alpha differs from what trimesh writes |
+
+Raw numbers: `bench/to_glb_ab/`. Inside the pipeline process `to_glb` is slightly slower than standalone
+(`T.png`: 7.7 s against 7.2 s); it runs right after the samplers with their buffers resident.
+The GLB is deterministic: `T.png` `1024_cascade` gave the same bytes in the standalone run and both pipeline runs.
+
+### Tolerance
+
+End to end against the ROCm port's official-eager GLBs at `1024_cascade` (`tools/tolerance.py`,
+`bench/tolerance_glb_1024c.json`): symmetric Chamfer distance / bounding-box diagonal, and base-colour L1 (0–255) at
+matched surface samples. The ROCm rows are the official pipeline in other configurations against the same reference,
+i.e. the band users already accept. The Metal row also contains the sampling difference of a different backend, not
+only `to_glb`.
+
+| vs ROCm official eager | 0a34 | 0e49 | 0f16 | 130c | T.png |
+|---|---|---|---|---|---|
+| ROCm official `torch.compile` | 2.20e-3 / 22.2 | 3.83e-3 / 22.8 | 2.74e-3 / 21.4 | 4.32e-3 / 18.9 | 2.53e-3 / 25.4 |
+| ROCm parity | 2.21e-3 / 21.7 | 3.68e-3 / 22.6 | 2.75e-3 / 26.3 | 4.34e-3 / 19.3 | 2.50e-3 / 28.9 |
+| ROCm fast | 2.14e-3 / 17.0 | 3.54e-3 / 21.4 | 2.66e-3 / 28.7 | 4.30e-3 / 23.7 | 2.70e-3 / 26.2 |
+| **Metal fast + `--glb`** | 2.33e-3 / 21.5 | 3.73e-3 / 21.1 | 3.17e-3 / 25.0 | 4.69e-3 / 22.2 | 2.60e-3 / 29.9 |
+
+Metal is inside the band on 0e49 and on Chamfer for T.png, and just above it elsewhere: Chamfer by 0.1e-3 (0a34),
+0.4e-3 (0f16) and 0.35e-3 (130c) of the diagonal, colour by 1.0 on T.png. The band of the CUDA port's configurations
+was not recomputed here.
+
+`to_glb` in isolation, each GLB against the mesh and voxels it was made from (`tools/check_glb.py`,
+`bench/to_glb_gates/`), range over the five images. The remesh sits one voxel off the input surface by construction
+(`remesh_band=1`), which is the distance seen:
+
+| | voxel | GLB→mesh mean (p99) | mesh→GLB mean | base colour L1 | roughness L1 | metallic L1 |
+|---|---|---|---|---|---|---|
+| `512` | 1.95e-3 | 2.1–2.65e-3 (3.0–4.4e-3) | 2.3–3.3e-3 | 2.33–3.56 | 0.01–3.0 | 0.06–5.07 |
+| `1024_cascade` | 9.77e-4 | 1.15–1.95e-3 (2.0–3.95e-3) | 1.28–2.58e-3 | 2.56–4.36 | 0.45–2.54 | 0.05–3.22 |
+
+Simplification quality against the reference GLBs: all ten Metal GLBs load in trimesh with unit normals, UVs in
+[0, 1], 0 degenerate faces and 0 boundary edges; at `1024_cascade` they have 2,503–21,973 non-manifold edges at
+993k–1,000k faces. The ROCm official-eager GLBs have 2,882–23,313 non-manifold edges, 8–70 boundary edges, 4–30
+degenerate faces and a few zero-length normals at about 950k–970k faces. So the topology is comparable, and the
+geometric distance is the Chamfer row above.
+
+Unit tests, `build/glb_test` (24 checks, all pass; log in `bench/to_glb_gates/glb_test_T1024c.log`):
+
+- LBVH nearest-triangle against brute force: random soups, capped queries, 1 and 2 triangles, and the 12.7 M-face real
+  mesh; max distance error 1.3e-5 on the soups and 5.9e-8 on the real mesh, same face except for exact ties.
+- Rasterizer against a CPU rasterizer: fill-rule grid exact; random triangles differ on 0.012% of texels, all within
+  0.002 texel of an edge (Metal snaps vertices to 1/256 texel).
+- TELEA on the GPU against the same algorithm on the CPU: 0 of 55,698,396 values differ on the real 4096² textures.
+  It is not `cv2.inpaint`: OpenCV fills by a serial priority queue. Measured against OpenCV on the same textures: mean
+  |d| 1.11 (p99 10) on the first ring of filled texels, 3.50 over all filled texels (base colour, 0–255).
+- Bake against a brute-force nearest point + trilinear sample: 100% of 3,000 texels equal on the real mesh; 99.5%
+  equal and the rest off by one on the synthetic one.
+- Atlas: every simplified face mapped exactly once; 59 of 7,494,233 covered texels belong to two faces; texel density
+  p5/median 0.96, p95/median 1.13.
+- GLB validity in a standard parser (trimesh, offline): `tools/check_glb.py`.
+
+### Model side
+
+Nothing was changed in the samplers or decoders for the GLB work. The ROCm fast build's ideas are already in the Metal
+fast build (fused kernels, K/V caching, closed-form unconditional cross-attention, the Metal 4 GEMM). Batching the two
+CFG branches was not pursued: matmul and attention already run at the kernels' TFLOPS ceiling, so a batch of two costs
+twice one. Mesh extraction takes about 0.14 s, so there is nothing to win there.
+
+### Renders
+
+`build/render --glb` draws a GLB with its textures. Columns: input, Metal fast mesh (vertex colour), Metal GLB
+(textured, then geometry only), ROCm official GLB (textured, then geometry only).
+
+![GLB renders 1024_cascade](docs/renders_glb_1024c.png)
+
+![GLB renders 512](docs/renders_glb_512.png)
 
 ## Fast build
 
@@ -219,16 +378,25 @@ ref/venv/bin/python tools/extract_torch_metallibs.py ref/venv/lib/python3*/site-
 
 ```bash
 make build/t2 build/render
-./build/t2 --image in.png --type 512 --mode fast --out mesh.safetensors      # fast build, about 30 s on an M5 Pro
+./build/t2 --image in.png --type 512 --mode fast --glb out.glb               # image -> textured GLB, about 33 s on an M5 Pro
+./build/t2 --image in.png --type 512 --mode fast --out mesh.safetensors      # mesh + voxel attributes only, about 30 s
 ./build/t2 --image in.png --type 1024_cascade --mode fast --out mesh.safetensors   # higher resolution, 48-64 GB machines
 ./build/t2 --image in.png --type 512 --mode parity --out mesh.safetensors    # bit-identical to official PyTorch-MPS
 ./build/t2 --image in.png --mode fast --lowmem --out mesh.safetensors        # small-memory machines, see above
 ./build/render --mesh mesh.safetensors --out view --views 8                  # PNG renders of the result
+./build/render --glb out.glb --out view --views 8                            # the same for a GLB, with its textures
 ```
 
 The output file holds `vertices` [V,3], `faces` [F,3], and the voxel `coords` and `attrs` (base color, metallic,
 roughness, alpha) of the official `MeshWithVoxel`. Other options: `--seed N` (default 42), `--max-tokens N`,
 `--pool-gb G`, `--quiet`. `T2_GEMM=mps` switches the fast build's matmul back to MPS.
+
+GLB options (defaults are the official `example.py` settings): `--faces N` (decimation target, 1000000),
+`--texture-size N` (4096), `--texture-format webp|png` (WebP quality 80 with `EXT_texture_webp`, as the official
+export writes; PNG for viewers without WebP support, about twice the file size), `--webp-alpha-quality 0..100`
+(100 = lossless alpha plane, the default). `--glb` works with either `--mode`; `--out` and `--glb` can be combined, and
+with several `--image` arguments both name a directory. `make build/glb` builds the standalone converter:
+`./build/glb --mesh mesh.safetensors --out out.glb [-v]`.
 
 **Benchmarks and checks.**
 
@@ -238,6 +406,9 @@ roughness, alpha) of the official `MeshWithVoxel`. Other options: `--seed N` (de
 tools/run_bench.sh 512 1024_cascade                                            # official vs parity vs fast, sequential
 ref/venv/bin/python tools/bench_ref.py --compile --type 512 --images a.png --out out.json   # official under torch.compile
 tools/ab_bench.sh 512 1024_cascade                                             # fast build: MPS matmul vs Metal 4 GEMM
+make build/glb_test && ./build/glb_test --mesh mesh.safetensors                # to_glb kernels against brute force
+ref/venv/bin/python tools/check_glb.py out.glb mesh.safetensors                # GLB validity + to_glb in isolation
+ref/venv/bin/python tools/tolerance.py --out t.json REF=dir METAL=dir          # Chamfer / colour L1 between GLB sets
 ```
 
 The official reference (parity checks and baselines only) lives in `ref/` (not in this repo: the official TRELLIS.2
@@ -246,8 +417,9 @@ kernel library out of `libtorch_cpu.dylib`, and `tools/ref_dump.py` writes the s
 `build/parity`, `build/parity_dec` and `build/t2 --ref` compare against.
 
 **Scope and assumptions.**
-- The baseline is image → `MeshWithVoxel`. The official `to_glb` (CuMesh, nvdiffrast, FlexGEMM) is CUDA-only and does
-  not run on a Mac, so GLB export is not part of either side.
+- The bitwise baseline is image → `MeshWithVoxel`. The official `to_glb` (CuMesh, nvdiffrast, FlexGEMM) is CUDA-only
+  and does not run on a Mac, so there is no official Mac baseline for GLB export, in time or in bits: `--glb` is a
+  reimplementation checked by tolerance (see *Image → GLB*), and it leaves the parity guarantee on the mesh untouched.
 - Input images need an alpha channel; background removal (rembg) is not ported.
 - Bitwise parity is against torch 2.15 on this macOS version. It depends on Apple's MPS kernels, so a different OS or
   chip family may need the reference dumps regenerated before `PARITY OK` means anything there.
@@ -259,6 +431,11 @@ kernel library out of `libtorch_cpu.dylib`, and `tools/ref_dump.py` writes the s
 library, as a PyTorch extension that works on MPS tensors: `gemm`, `gemm_bias_gelu` (the Metal 4 MPP GEMM with fused
 bias+GELU), `bias_gelu_`, `resid_ln` (residual update + layer norm) and `qprep` (q/k/v split with QK-norm and RoPE).
 Hub repository: `suvadityamuk/trellis2-metal` (version 0).
+
+Not yet published (in the source tree only, built and tested with the development build below, not with
+`kernel-builder`): two kernels from `to_glb`, `lbvh_build` / `mesh_nearest` / `mesh_udf` (nearest triangle, distance and
+barycentrics on a linear BVH, tested against a float64 brute force) and `telea_inpaint` (wavefront Telea inpainting of
+uint8 images, tested against a NumPy implementation of the same fill order and, loosely, against OpenCV).
 
 ```python
 from kernels import get_kernel
@@ -287,8 +464,10 @@ builds a development-only extension (shaders compiled at runtime; never publish 
 - `src/rt/`: tensors, buffer pool, safetensors I/O, torch-compatible RNG.
 - `src/models/`: DINOv3, dense and sparse flow DiTs, sampler, sparse-structure / shape / texture decoders, mesh extraction.
 - `src/fast/flow_fast.h`: the fast build's fused kernels and execution plan. `src/pipeline.h`: the driver for both builds.
-- `apps/`: `t2` (pipeline), `parity*` (per-stage bitwise checks), `fast_check` (single-call error and timing),
-  `render` (Metal rasterizer), `mmbench` (matmul/attention throughput); experiments: `mm_mpp`, `gemm_ab`, `epi_bench`,
+- `src/glb/`: `to_glb` (LBVH, remesh, simplify, UV atlas, bake + TELEA kernels, GLB writer). `third_party/`: vendored
+  xatlas and libwebp encoder sources.
+- `apps/`: `t2` (pipeline), `glb` (standalone `to_glb`), `glb_test` (its kernel tests), `parity*` (per-stage bitwise
+  checks), `fast_check` (single-call error and timing), `render` (Metal rasterizer for meshes and GLBs), `mmbench` (matmul/attention throughput); experiments: `mm_mpp`, `gemm_ab`, `epi_bench`,
   `attn_tune`, `attn_tg`, `attn_mm`.
 - `tools/`: offline-only Python (reference dumps, official timing, gates, plots, visuals). `bench/`: raw timings and
   outputs. `docs/`: plots and renders.

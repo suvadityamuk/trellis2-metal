@@ -1,0 +1,26 @@
+PASS  lbvh.random_soup             30000 tris, 60000 queries with a hit: max |d_gpu - d_brute| 1.34e-05, distance bit-equal 70.24%, same face 100.00% (rest are ties), max |dist(q, face*uvw) - d| 1.34e-05, cap mismatches 0
+PASS  lbvh.random_soup_cap         30000 tris, 46983 queries with a hit: max |d_gpu - d_brute| 1.34e-05, distance bit-equal 69.50%, same face 100.00% (rest are ties), max |dist(q, face*uvw) - d| 1.34e-05, cap mismatches 0
+PASS  lbvh.single_triangle         1 tris, 1000 queries with a hit: max |d_gpu - d_brute| 1.19e-07, distance bit-equal 91.20%, same face 100.00% (rest are ties), max |dist(q, face*uvw) - d| 0.00e+00, cap mismatches 0
+PASS  lbvh.two_triangles           2 tris, 1000 queries with a hit: max |d_gpu - d_brute| 1.19e-07, distance bit-equal 89.00%, same face 100.00% (rest are ties), max |dist(q, face*uvw) - d| 1.19e-07, cap mismatches 0
+PASS  lbvh.real_mesh               12674998 tris, 1500 queries with a hit: max |d_gpu - d_brute| 5.86e-08, distance bit-equal 58.93%, same face 97.33% (rest are ties), max |dist(q, face*uvw) - d| 5.86e-08, cap mismatches 0
+PASS  raster.fill_rule_grid        2048 faces on texel centers, 256x256: 0 mismatching texels, 50176 covered (expected 50176), 0 texels hit twice
+PASS  raster.random_triangles      20000 faces, 1024x1024: 129 of 1042336 covered texels differ (0.0124%), all within 0.0020 texel of a triangle edge (Metal snaps vertices to 1/256 texel)
+PASS  telea.gpu_vs_cpu_twin        768x640, 213431 unknown texels in 85 levels: 0 of 1280586 channel values differ (0.0000%), max |diff| 0, known texels untouched
+PASS  telea.trivial_masks          no known texel: 0 levels (nothing to propagate); all known: 0 levels, max diff 0
+PASS  synthetic.fill_holes         2 boundary loops (brute force 2), 0 filled with perimeter < 3e-2 (brute force 0), 0 new faces (expected 0)
+PASS  synthetic.remesh_simplify    25277 -> 29912 remeshed -> 5994 faces (target 6000): vertex distance to the input surface is eps = 0.0164 (1 band voxel) with mean |d - eps| 0.045 voxel, max 0.477 voxel (brute force); 0 non-manifold directed edges, 0 boundary edges
+PASS  synthetic.atlas_all_faces_mapped 5994 simplified faces (target 6000) == 5994 atlas faces as a multiset (orientation kept), 3760 atlas verts, uv in [0.0004, 0.9989]
+PASS  synthetic.atlas_no_overlap   512x512: 0 of 130825 covered texels are covered by more than one face (0.00000%); coverage 49.9% of the texture
+PASS  synthetic.raster_gpu_vs_cpu  65 of 130825 covered texels differ (0.0497%), all within 0.0021 texel of a face edge
+PASS  synthetic.atlas_texel_density texels per unit length (area-weighted): p1 207, p5 212, median 224, p95 233 (p5/median 0.95, p95/median 1.04); mean 224; 0 faces with zero UV area, 90 mirrored; 2 faces (0.003% of the surface area) own no texel center
+PASS  synthetic.bake_vs_brute_force 130825 texels x 6 channels (raster id -> barycentric point -> brute-force nearest point on the 25277-face input mesh -> trilinear voxel sample -> uint8): equal 99.516%, off by one 0.484%, off by more 0.0000% (max 1; nearest-point ties / float rounding at uint8 truncation)
+PASS  synthetic.telea_gpu_vs_cpu   131319 unknown texels, 135 levels: 0 channel values differ (max |diff| 0)
+PASS  synthetic.pack_layout        base = (r, g, b, alpha), metallicRoughness = (0, roughness, metallic) at every baked texel: 0 mismatches
+      synthetic GLB: ./synthetic.glb (check with tools/check_glb.py)
+PASS  real.atlas_all_faces_mapped  998510 simplified faces (target 1000000) == 998510 atlas faces as a multiset (orientation kept), 789292 atlas verts, uv in [0.0000, 0.9989]
+PASS  real.atlas_no_overlap        4096x4096: 59 of 7494233 covered texels are covered by more than one face (0.00079%); coverage 44.7% of the texture
+PASS  real.raster_gpu_vs_cpu       5877 of 7494233 covered texels differ (0.0784%), all within 0.0023 texel of a face edge
+PASS  real.atlas_texel_density     texels per unit length (area-weighted): p1 856, p5 935, median 970, p95 1101 (p5/median 0.96, p95/median 1.13); mean 993; 76 faces with zero UV area, 362274 mirrored; 30269 faces (0.449% of the surface area) own no texel center
+PASS  real.bake_vs_brute_force     3000 texels x 6 channels (raster id -> barycentric point -> brute-force nearest point on the 12763818-face input mesh -> trilinear voxel sample -> uint8): equal 100.000%, off by one 0.000%, off by more 0.0000% (max 0; nearest-point ties / float rounding at uint8 truncation)
+PASS  real.telea_gpu_vs_cpu        4096x4096, 9283066 unknown texels, 335 levels: 0 of 55698396 channel values differ (0.0000%), max |diff| 0
+GLB TESTS OK (0 failed)

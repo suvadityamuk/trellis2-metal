@@ -1,0 +1,164 @@
+{
+ "W": 4096,
+ "H": 4096,
+ "holes": 9283066,
+ "levels": 335,
+ "cv2_seconds_4_inpaints": 7.961,
+ "rows": {
+  "level 1 (touching a chart)": {
+   "texels": 1834810,
+   "base rgb": {
+    "mean": 1.112,
+    "p99": 10.0,
+    "max": 83,
+    "equal_pct": 46.29,
+    "within1_pct": 79.56
+   },
+   "metallic": {
+    "mean": 0.255,
+    "p99": 1.0,
+    "max": 187,
+    "equal_pct": 80.69,
+    "within1_pct": 99.12
+   },
+   "roughness": {
+    "mean": 0.444,
+    "p99": 4.0,
+    "max": 79,
+    "equal_pct": 72.43,
+    "within1_pct": 90.69
+   },
+   "alpha": {
+    "mean": 0.206,
+    "p99": 1.0,
+    "max": 170,
+    "equal_pct": 79.84,
+    "within1_pct": 99.9
+   }
+  },
+  "levels 1-2": {
+   "texels": 3722477,
+   "base rgb": {
+    "mean": 1.592,
+    "p99": 18.0,
+    "max": 88,
+    "equal_pct": 41.77,
+    "within1_pct": 74.72
+   },
+   "metallic": {
+    "mean": 0.424,
+    "p99": 2.0,
+    "max": 216,
+    "equal_pct": 82.21,
+    "within1_pct": 98.72
+   },
+   "roughness": {
+    "mean": 0.861,
+    "p99": 16.0,
+    "max": 121,
+    "equal_pct": 66.94,
+    "within1_pct": 87.93
+   },
+   "alpha": {
+    "mean": 0.187,
+    "p99": 1.0,
+    "max": 170,
+    "equal_pct": 82.78,
+    "within1_pct": 99.82
+   }
+  },
+  "levels 1-4": {
+   "texels": 6777653,
+   "base rgb": {
+    "mean": 2.276,
+    "p99": 21.0,
+    "max": 88,
+    "equal_pct": 33.83,
+    "within1_pct": 64.71
+   },
+   "metallic": {
+    "mean": 0.917,
+    "p99": 11.0,
+    "max": 255,
+    "equal_pct": 76.18,
+    "within1_pct": 97.6
+   },
+   "roughness": {
+    "mean": 1.834,
+    "p99": 31.0,
+    "max": 168,
+    "equal_pct": 55.83,
+    "within1_pct": 78.35
+   },
+   "alpha": {
+    "mean": 0.26,
+    "p99": 1.0,
+    "max": 207,
+    "equal_pct": 78.06,
+    "within1_pct": 99.65
+   }
+  },
+  "levels 1-8": {
+   "texels": 8382683,
+   "base rgb": {
+    "mean": 2.62,
+    "p99": 22.0,
+    "max": 88,
+    "equal_pct": 30.33,
+    "within1_pct": 59.83
+   },
+   "metallic": {
+    "mean": 1.238,
+    "p99": 29.0,
+    "max": 255,
+    "equal_pct": 72.97,
+    "within1_pct": 96.87
+   },
+   "roughness": {
+    "mean": 2.517,
+    "p99": 36.0,
+    "max": 168,
+    "equal_pct": 50.03,
+    "within1_pct": 72.32
+   },
+   "alpha": {
+    "mean": 0.298,
+    "p99": 1.0,
+    "max": 246,
+    "equal_pct": 75.57,
+    "within1_pct": 99.56
+   }
+  },
+  "all holes": {
+   "texels": 9283066,
+   "base rgb": {
+    "mean": 3.502,
+    "p99": 32.0,
+    "max": 178,
+    "equal_pct": 28.05,
+    "within1_pct": 55.9
+   },
+   "metallic": {
+    "mean": 1.718,
+    "p99": 44.0,
+    "max": 255,
+    "equal_pct": 71.3,
+    "within1_pct": 96.34
+   },
+   "roughness": {
+    "mean": 3.708,
+    "p99": 53.0,
+    "max": 192,
+    "equal_pct": 46.89,
+    "within1_pct": 68.14
+   },
+   "alpha": {
+    "mean": 0.323,
+    "p99": 1.0,
+    "max": 246,
+    "equal_pct": 74.33,
+    "within1_pct": 99.5
+   }
+  }
+ }
+}

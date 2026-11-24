@@ -1,7 +1,7 @@
 # build products (binaries, objects, the Metal library extracted from torch)
 build/
 # checkpoints (symlinks into the Hugging Face cache)
-models/
+/models/
 # official reference: TRELLIS.2 repo, PyTorch source, venv
 ref/
 # reference dumps (regenerate with tools/ref_dump.py); the .txt manifests are kept

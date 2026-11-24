@@ -1,0 +1,30 @@
+== trellis2-rocm/out/eager/0a34fae7.glb
+NORMALS: 5 of 899172 not unit length
+TOPOLOGY: welded verts 451271, degenerate faces 14, edges 1416195: boundary 9, manifold 1406944, non-manifold 9242
+== trellis2-rocm/out/eager/0e4984a9.glb
+NORMALS: 4 of 1052571 not unit length
+TOPOLOGY: welded verts 440023, degenerate faces 30, edges 1430183: boundary 21, manifold 1406849, non-manifold 23313
+== trellis2-rocm/out/eager/0f168a4b.glb
+NORMALS: 3 of 759922 not unit length
+TOPOLOGY: welded verts 474921, degenerate faces 6, edges 1436760: boundary 70, manifold 1433808, non-manifold 2882
+== trellis2-rocm/out/eager/130c2b18.glb
+NORMALS: 0 of 898671 not unit length
+TOPOLOGY: welded verts 460843, degenerate faces 8, edges 1424040: boundary 8, manifold 1417293, non-manifold 6739
+== trellis2-rocm/out/eager/T.glb
+NORMALS: 0 of 774130 not unit length
+TOPOLOGY: welded verts 477815, degenerate faces 4, edges 1448330: boundary 18, manifold 1444204, non-manifold 4108
+== trellis2-rocm/out/fast/0a34fae7.glb
+NORMALS: 126 of 897444 not unit length
+TOPOLOGY: welded verts 454200, degenerate faces 15, edges 1424060: boundary 7, manifold 1417308, non-manifold 6745
+== trellis2-rocm/out/fast/0e4984a9.glb
+NORMALS: 413 of 1033391 not unit length
+TOPOLOGY: welded verts 439825, degenerate faces 27, edges 1424009: boundary 27, manifold 1398726, non-manifold 25256
+== trellis2-rocm/out/fast/0f168a4b.glb
+NORMALS: 162 of 729289 not unit length
+TOPOLOGY: welded verts 468424, degenerate faces 5, edges 1414578: boundary 53, manifold 1412625, non-manifold 1900
+== trellis2-rocm/out/fast/130c2b18.glb
+NORMALS: 144 of 941722 not unit length
+TOPOLOGY: welded verts 464568, degenerate faces 6, edges 1445497: boundary 6, manifold 1436987, non-manifold 8504
+== trellis2-rocm/out/fast/T.glb
+NORMALS: 275 of 779979 not unit length
+TOPOLOGY: welded verts 466945, degenerate faces 8, edges 1419294: boundary 9, manifold 1413398, non-manifold 5887

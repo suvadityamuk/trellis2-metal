@@ -1,0 +1,20 @@
+== 0a34fae7ba57cb8870df5325b9c30ea474def1b0913c19c596655b85a79fdee4_1024_cascade
+TOPOLOGY: welded verts 476078, degenerate faces 0, edges 1483644: boundary 0, manifold 1472906, non-manifold 10738
+VALID GLB: 905177 verts, 996270 faces, textures base (4096, 4096, 3) mr (4096, 4096, 3), images ['image/webp', 'image/webp'], extensions ['EXT_texture_webp'], normals |n| in [1.000, 1.000], uv in [0.0000, 1.0000], bounds [[-0.5, -0.37, -0.499], [0.5, 0.356, 0.499]]
+ISOLATION: voxel 9.77e-04; GLB->input mesh mean 1.51e-03 p99 2.78e-03; input->GLB mean 1.85e-03 p99 3.64e-03; base colour L1 vs nearest voxel 3.29/255 (nearest voxel center at mean 7.72e-04); roughness L1 1.02, metallic L1 2.62
+== 0e4984a9b3765ce80e9853443f9319ecedf90885c74b56cccfebc09402740f8a_1024_cascade
+TOPOLOGY: welded verts 461364, degenerate faces 0, edges 1468016: boundary 0, manifold 1446043, non-manifold 21973
+VALID GLB: 1052631 verts, 993496 faces, textures base (4096, 4096, 3) mr (4096, 4096, 3), images ['image/webp', 'image/webp'], extensions ['EXT_texture_webp'], normals |n| in [1.000, 1.000], uv in [0.0000, 1.0000], bounds [[-0.479, -0.5, -0.34], [0.46, 0.5, 0.342]]
+ISOLATION: voxel 9.77e-04; GLB->input mesh mean 1.95e-03 p99 3.95e-03; input->GLB mean 2.58e-03 p99 6.08e-03; base colour L1 vs nearest voxel 4.36/255 (nearest voxel center at mean 8.32e-04); roughness L1 0.45, metallic L1 0.05
+== 0f168a4b1b6e96c72e9627c97a212c27a4572250ff58e25703b9d0c2bc74191a_1024_cascade
+TOPOLOGY: welded verts 495493, degenerate faces 0, edges 1496620: boundary 0, manifold 1494117, non-manifold 2503
+VALID GLB: 765919 verts, 999416 faces, textures base (4096, 4096, 3) mr (4096, 4096, 3), images ['image/webp', 'image/webp'], extensions ['EXT_texture_webp'], normals |n| in [1.000, 1.000], uv in [0.0000, 1.0000], bounds [[-0.364, -0.282, -0.498], [0.364, 0.282, 0.501]]
+ISOLATION: voxel 9.77e-04; GLB->input mesh mean 1.72e-03 p99 3.40e-03; input->GLB mean 2.16e-03 p99 4.28e-03; base colour L1 vs nearest voxel 4.31/255 (nearest voxel center at mean 9.04e-04); roughness L1 1.40, metallic L1 2.14
+== 130c2b18f1651a70f8aa15b2c99f8dba29bb943044d92871f9223bd3e989e8b1_1024_cascade
+TOPOLOGY: welded verts 482493, degenerate faces 0, edges 1491395: boundary 0, manifold 1483010, non-manifold 8385
+VALID GLB: 931322 verts, 999858 faces, textures base (4096, 4096, 3) mr (4096, 4096, 3), images ['image/webp', 'image/webp'], extensions ['EXT_texture_webp'], normals |n| in [1.000, 1.000], uv in [0.0000, 1.0000], bounds [[-0.312, -0.501, -0.282], [0.313, 0.501, 0.287]]
+ISOLATION: voxel 9.77e-04; GLB->input mesh mean 1.15e-03 p99 2.01e-03; input->GLB mean 1.28e-03 p99 2.25e-03; base colour L1 vs nearest voxel 2.56/255 (nearest voxel center at mean 7.49e-04); roughness L1 1.32, metallic L1 3.22
+== T_1024_cascade
+TOPOLOGY: welded verts 492066, degenerate faces 0, edges 1492736: boundary 0, manifold 1487709, non-manifold 5027
+VALID GLB: 789292 verts, 998510 faces, textures base (4096, 4096, 3) mr (4096, 4096, 3), images ['image/webp', 'image/webp'], extensions ['EXT_texture_webp'], normals |n| in [1.000, 1.000], uv in [0.0000, 1.0000], bounds [[-0.501, -0.465, -0.196], [0.501, 0.465, 0.192]]
+ISOLATION: voxel 9.77e-04; GLB->input mesh mean 1.64e-03 p99 3.20e-03; input->GLB mean 2.15e-03 p99 4.72e-03; base colour L1 vs nearest voxel 3.41/255 (nearest voxel center at mean 8.83e-04); roughness L1 2.54, metallic L1 1.70

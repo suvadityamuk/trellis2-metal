@@ -41,6 +41,7 @@ struct PipeOut {
   Tensor shape_slat, tex_slat, slat_coords;       // denormalised latents (for tolerance gates)
   std::map<std::string, double> t;                // stage seconds (weight loading excluded, reported as load_*)
   int64_t tokens = 0, tokens_lr = 0; bool parity_ok = true;
+  int64_t glb_faces = 0, glb_verts = 0, glb_bytes = 0;  // set by build/t2 --glb
 };
 
 // The parity implementation bundle.

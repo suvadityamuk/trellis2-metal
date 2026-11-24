@@ -1,0 +1,5 @@
+{
+  "130c2b18f1651a70f8aa15b2c99f8dba29bb943044d92871f9223bd3e989e8b1.webp": {"cond": 1.0622, "decode_shape": 1.5150, "decode_tex": 1.5027, "load": 0.0000, "preprocess": 0.0007, "shape_slat": 34.4509, "sparse_structure": 13.4414, "tex_slat": 18.3425, "total": 70.3153, "tokens": 7075, "vertices": 1235816, "faces": 2118732, "voxels": 1235816, "res": 1024, "peak_pool_gb": 18.541, "peak_footprint_gb": 19.072},
+  "T.png": {"cond": 1.0636, "decode_shape": 5.7392, "decode_tex": 5.6298, "load": 0.0000, "preprocess": 0.0024, "shape_slat": 113.2061, "sparse_structure": 13.3146, "tex_slat": 62.7678, "total": 201.7235, "tokens": 16518, "vertices": 5955541, "faces": 12674998, "voxels": 5955541, "res": 1024, "peak_pool_gb": 24.886, "peak_footprint_gb": 37.720},
+  "0a34fae7ba57cb8870df5325b9c30ea474def1b0913c19c596655b85a79fdee4.webp": {"cond": 1.0516, "decode_shape": 5.2326, "decode_tex": 5.1911, "load": 0.0000, "preprocess": 0.0013, "shape_slat": 84.6185, "sparse_structure": 13.4023, "tex_slat": 46.5800, "total": 156.0774, "tokens": 13581, "vertices": 5576909, "faces": 11183364, "voxels": 5576909, "res": 1024, "peak_pool_gb": 24.886, "peak_footprint_gb": 37.720}
+}

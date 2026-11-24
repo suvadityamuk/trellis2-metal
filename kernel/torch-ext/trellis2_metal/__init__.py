@@ -4,7 +4,7 @@ All functions take contiguous MPS tensors. Activations are bfloat16, the residua
 stream and the parameters applied to it are float32. Requires macOS 26 (Metal 4).
 """
 
-from typing import Optional
+from typing import Optional, Tuple
 
 import torch
 
@@ -118,4 +118,100 @@ def qprep(
     return out
 
 
-__all__ = ["gemm", "gemm_bias_gelu", "bias_gelu_", "resid_ln", "qprep"]
+def lbvh_build(
+    vertices: torch.Tensor, faces: torch.Tensor, device: Optional[torch.device] = None
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Builds a linear BVH over a triangle mesh on the CPU and returns it as two MPS tensors.
+
+    ``vertices`` is [V, 3] (converted to float32), ``faces`` [F, 3] (converted to int32). The
+    result ``(nodes, tris)`` is opaque (raw node and triangle records as int32) and is what
+    :func:`mesh_nearest` takes. Degenerate triangles are allowed.
+    """
+    if device is None:
+        device = vertices.device if vertices.device.type == "mps" else torch.device("mps")
+    nodes, tris = ops.lbvh_build(
+        vertices.detach().to("cpu", torch.float32).contiguous(),
+        faces.detach().to("cpu", torch.int32).contiguous(),
+    )
+    return nodes.to(device), tris.to(device)
+
+
+def mesh_nearest(
+    bvh: Tuple[torch.Tensor, torch.Tensor],
+    points: torch.Tensor,
+    max_distance: Optional[float] = None,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Nearest triangle to every point of float32 ``points`` [M, 3] (MPS), exact (not approximate).
+
+    Returns ``(distance, face, bary)``: float32 [M] unsigned distances, int32 [M] indices into
+    the ``faces`` given to :func:`lbvh_build` (lowest index on exact ties), and float32 [M, 3]
+    barycentric coordinates of the closest point. With ``max_distance`` set, points farther
+    than that from every triangle get ``distance = inf`` and ``face = -1``.
+    """
+    nodes, tris = bvh
+    m = points.shape[0]
+    dist = torch.empty((m,), dtype=torch.float32, device=points.device)
+    face = torch.empty((m,), dtype=torch.int32, device=points.device)
+    bary = torch.empty((m, 3), dtype=torch.float32, device=points.device)
+    ops.mesh_nearest(
+        dist,
+        face,
+        bary,
+        nodes,
+        tris,
+        points,
+        float("inf") if max_distance is None else float(max_distance),
+    )
+    return dist, face, bary
+
+
+def mesh_udf(
+    vertices: torch.Tensor, faces: torch.Tensor, points: torch.Tensor
+) -> torch.Tensor:
+    """Unsigned distance from float32 ``points`` [M, 3] (MPS) to the mesh. Builds the BVH on every call."""
+    return mesh_nearest(lbvh_build(vertices, faces, points.device), points)[0]
+
+
+def telea_inpaint(
+    image: torch.Tensor, mask: torch.Tensor, radius: int = 3
+) -> torch.Tensor:
+    """Telea inpainting of a uint8 ``image`` [H, W, C] (MPS, C <= 8) where ``mask`` [H, W] is non-zero.
+
+    The counterpart of ``cv2.inpaint(image, mask, radius, cv2.INPAINT_TELEA)``: the same
+    per-pixel estimate, but pixels are filled in order of their 4-connected distance to the
+    known region (all pixels of one level in parallel) instead of OpenCV's fast-marching
+    order, so results agree closely next to known pixels and differ more deep inside large
+    holes. Known pixels are returned unchanged; with no known pixel nothing is filled.
+    """
+    if image.dim() != 3:
+        raise ValueError(f"image must be [H, W, C], got {tuple(image.shape)}")
+    if mask.shape != image.shape[:2]:
+        raise ValueError(
+            f"mask must be {tuple(image.shape[:2])}, got {tuple(mask.shape)}"
+        )
+    lv, order, offsets = ops.telea_levels(
+        (mask.detach() != 0).to("cpu", torch.uint8).contiguous()
+    )
+    planar = image.permute(2, 0, 1).clone(memory_format=torch.contiguous_format)
+    if order.numel() > 0:
+        ops.telea_fill(
+            planar,
+            lv.to(image.device),
+            order.to(image.device),
+            offsets.tolist(),
+            radius,
+        )
+    return planar.permute(1, 2, 0).contiguous()
+
+
+__all__ = [
+    "gemm",
+    "gemm_bias_gelu",
+    "bias_gelu_",
+    "resid_ln",
+    "qprep",
+    "lbvh_build",
+    "mesh_nearest",
+    "mesh_udf",
+    "telea_inpaint",
+]

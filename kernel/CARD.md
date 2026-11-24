@@ -11,7 +11,8 @@ library_name: kernels
 
 Metal compute kernels from a Metal port of the [TRELLIS.2](https://github.com/microsoft/TRELLIS.2) image-to-3D pipeline,
 packaged for the [`kernels` library](https://github.com/huggingface/kernels). They are the fused building blocks of the
-flow transformer's fast path and operate directly on PyTorch MPS tensors.
+flow transformer's fast path, plus two mesh/texture kernels from the port's GLB export (nearest triangle on a linear
+BVH, and wavefront Telea inpainting), and operate directly on PyTorch MPS tensors.
 
 **Requirements:** Apple silicon, macOS 26 or later (the GEMM uses Metal 4's MetalPerformancePrimitives), PyTorch with MPS.
 
@@ -32,7 +33,7 @@ b = torch.randn(6144, device="mps")
 y = t2.gemm_bias_gelu(x, w, b)  # gelu(x @ w.T + b, approximate="tanh") in one pass
 ```
 
-All functions take **contiguous MPS tensors**. Activations are `bfloat16`; the residual stream and the parameters
+The transformer functions take **contiguous MPS tensors**. Activations are `bfloat16`; the residual stream and the parameters
 applied to it are `float32`. Nothing here is differentiable: the kernels are for inference.
 
 ## Available functions
@@ -45,6 +46,16 @@ applied to it are `float32`. Nothing here is differentiable: the kernels are for
 | `resid_ln(x, vec, branch=None, out=None, *, residual=True, layer_norm=True, fused_affine=False, eps=1e-6)` | Residual update of the f32 stream `x` [N, C] (in place) with the bf16 `branch` output, fused with the layer norm (+ affine) that feeds the next branch, returned as bf16. `vec` is f32 [4, C]: `(branch_bias, branch_scale, ln_weight, ln_bias)`. C must be a multiple of 32. |
 | `qprep(src, bias, heads, col_offset=0, gamma=None, phases=None, out=None)` | Splits q, k or v out of a fused bf16 projection [N, R] into attention layout [heads, N, 128], adding the bias and optionally applying QK RMS-norm (`gamma`) and rotary embeddings (`phases` [N, 64, 2] of cos/sin). The head dimension is fixed at 128. |
 
+Mesh and texture functions (f32 / int32 / uint8 tensors; the query and fill loops run on the GPU, the BVH build and
+the level ordering on the CPU):
+
+| Function | What it computes |
+|---|---|
+| `lbvh_build(vertices, faces)` | Linear BVH (30-bit Morton codes, Karras 2012) over a triangle mesh; returns an opaque `(nodes, tris)` pair of int32 MPS tensors. |
+| `mesh_nearest(bvh, points, max_distance=None)` | For f32 `points` [N, 3]: unsigned distance to the mesh, index of the nearest triangle and the barycentric coordinates of the closest point. With `max_distance`, points farther away get `inf` / `-1`. |
+| `mesh_udf(vertices, faces, points)` | Convenience: build + `mesh_nearest`, distance only. |
+| `telea_inpaint(image, mask, radius=3)` | Telea (2004) fast-marching-style inpainting of a uint8 image [H, W, C] (C ≤ 8) where `mask` is non-zero. Texels are filled in order of their 4-connected distance to the known region, one GPU dispatch per level (a wavefront), instead of OpenCV's serial heap order. |
+
 See the docstrings (`help(t2.resid_ln)`) for the exact rounding of each step.
 
 ## Numerics
@@ -52,6 +63,15 @@ See the docstrings (`help(t2.resid_ln)`) for the exact rounding of each step.
 Results are rounded to bfloat16 with round-to-nearest-even. Elementwise kernels follow the documented sequence of
 operations; reductions (the GEMM accumulation, the layer-norm statistics) use a different summation order than PyTorch,
 so compare with a tolerance of about one bfloat16 step rather than bit for bit.
+
+`mesh_nearest` evaluates exact point-triangle distance in f32 (Ericson's closest-point regions, degenerate triangles
+handled as segments/points); the tests compare it with a float64 brute force. Ties between triangles at equal
+distance may resolve to a different face index than a brute-force argmin. `telea_inpaint` is deterministic. Against
+a NumPy implementation of the same level order it is exact or one grey level off on isolated rounding ties (measured:
+at most 0.02% of values) when the shaders are compiled without fast math, and up to two grey levels off on under 1% of
+values with the fast-math shaders that kernel-builder compiles by default; it is **not** bit-compatible with
+`cv2.inpaint(..., cv2.INPAINT_TELEA)`, whose fill order is a serial priority queue (see the tests for the measured
+difference).
 
 ## Benchmarks
 {% if has_benchmark %}
