@@ -1,0 +1,11 @@
+trellis2-metal
+Copyright 2026 Suvaditya Mukherjee
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product is a port of TRELLIS.2 (https://github.com/microsoft/TRELLIS.2), MIT License,
+Copyright (c) Microsoft Corporation.
+
+Third-party code vendored under third_party/ keeps its own license:
+- xatlas (https://github.com/jpcy/xatlas), MIT License: third_party/xatlas/LICENSE
+- libwebp (https://chromium.googlesource.com/webm/libwebp), BSD-3-Clause: third_party/libwebp/COPYING
