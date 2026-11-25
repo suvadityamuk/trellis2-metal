@@ -354,15 +354,18 @@ elementwise ops over more than 2³¹ bytes are split as torch does.
 Requires an Apple-silicon Mac, macOS 26 and the Command Line Tools (`xcode-select --install`; no Xcode or CMake, own
 shaders are compiled at runtime). Python is needed once for setup, not at runtime.
 
+Everything below runs from the repository root. `models/`, `build/` and `ref/` are created by these steps and are
+git-ignored, so they are not in a fresh clone.
+
 **1. Checkpoints.** They are read as safetensors from `models/` (not in this repo). DINOv3 is a gated model, so accept
 its licence on Hugging Face and log in (`hf auth login`) first.
 
 ```bash
 pip install -U huggingface_hub
 mkdir -p models
-ln -s "$(hf download microsoft/TRELLIS.2-4B)" models/trellis2
-ln -s "$(hf download microsoft/TRELLIS-image-large --include 'ckpts/ss_dec_conv3d_16l8_fp16.*')/ckpts" models/ss_dec
-ln -s "$(hf download facebook/dinov3-vitl16-pretrain-lvd1689m config.json model.safetensors)" models/dino
+ln -s "$(hf download microsoft/TRELLIS.2-4B --quiet)" models/trellis2
+ln -s "$(hf download microsoft/TRELLIS-image-large --include 'ckpts/ss_dec_conv3d_16l8_fp16.*' --quiet)/ckpts" models/ss_dec
+ln -s "$(hf download facebook/dinov3-vitl16-pretrain-lvd1689m config.json model.safetensors --quiet)" models/dino
 ```
 
 **2. torch's Metal kernel library.** Both builds load the precompiled kernel library that ships inside the
@@ -374,7 +377,9 @@ python3 -m venv ref/venv && ref/venv/bin/pip install torch==2.15.0
 ref/venv/bin/python tools/extract_torch_metallibs.py ref/venv/lib/python3*/site-packages/torch/lib/libtorch_cpu.dylib build/torchlibs
 ```
 
-**3. Build and run.** The input image needs an alpha channel (PNG or WebP with the background already removed).
+**3. Build and run.** `make` compiles the end-to-end program [`apps/t2.mm`](apps/t2.mm) into `build/t2` (and
+[`apps/render.mm`](apps/render.mm) into `build/render`). The input image needs an alpha channel (PNG or WebP with the
+background already removed).
 
 ```bash
 make build/t2 build/render
